@@ -9,7 +9,7 @@ import {
   EditorGenerateWidgetItem,
   getCommonOptions
 } from '@simpleform/editor';
-import { CustomCol, joinFormPath, renderWidgetItem } from '../../FormRender';
+import { CustomCol, renderWidgetItem } from '../../FormRender';
 
 export type CustomColProps = Omit<ColProps, 'draggable' | 'onSelect'> & BaseSelectionProps & {
   column: ColProps & { children?: EditorGenerateWidgetItem[] };
@@ -37,7 +37,7 @@ const GridCol = React.forwardRef<HTMLDivElement, CustomColProps>((props, ref) =>
     const _childOptions = {
       ...commonOptions,
       index: childIndex,
-      path: joinFormPath(path, 'children', childIndex),
+      path: (path || []).concat('children', childIndex),
     };
     const instance = renderWidgetItem(formrender, child, _childOptions);
     return instance;
@@ -53,7 +53,7 @@ const GridCol = React.forwardRef<HTMLDivElement, CustomColProps>((props, ref) =>
         >
           <BaseDnd
             _options={_options}
-            dndPath={joinFormPath(path, 'children')}
+            dndPath={(path || []).concat('children')}
             dndList={widgetList}>
             {childs}
           </BaseDnd>

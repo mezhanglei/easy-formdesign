@@ -1,17 +1,17 @@
 import classnames from 'classnames';
-import React, { ReactNode, useState } from 'react';
+import React, { CSSProperties, ReactNode } from 'react';
 import './BaseSelection.less';
-import { FormEditorState } from '../context';
 import { SvgIcon } from '../common';
-import { delWidgetItem, pickAttrs } from '../utils';
-import { CommonFormProps } from '../typings';
+import { pickAttrs } from '../utils';
+import { SelectionContainer, SelectionCommonProps } from '../containers';
 
-export interface BaseSelectionProps extends CommonFormProps, Omit<React.HtmlHTMLAttributes<HTMLDivElement>, 'draggable' | 'onChange' | 'onSelect'> {
+export interface BaseSelectionProps extends SelectionCommonProps {
+  className?: string;
+  style?: CSSProperties;
+  children?: React.ReactNode;
   hiddenDel?: boolean;
   tools?: ReactNode[]; // 工具栏
   configLabel?: string; // 当前组件的名字
-  onSelectHandler?: (selected: FormEditorState['selected']) => void;
-  children?: React.ReactNode;
 }
 
 /**
@@ -28,66 +28,39 @@ const BaseSelection = React.forwardRef<HTMLDivElement, BaseSelectionProps>((prop
     configLabel,
     tools,
     hiddenDel,
-    onMouseOver,
-    onMouseOut,
-    onSelectHandler,
+    checked,
+    isOver,
+    setSelection,
+    deleteItem,
+    setMouseOver,
     ...restProps
   } = props;
 
   const prefixCls = "editor-selection";
-  const overCls = `${prefixCls}-over`;
-  const editorContext = _options?.editorContext;
-  const path = _options?.path;
-  const editor = _options?.formrender;
-  const [isOver, setIsOver] = useState<boolean>(false);
-  const { selected, historyRecord, onEvent } = editorContext?.state || {};
-  const isSelected = path ? path === selected?.path : false;
 
-  const nextSelected = {
-    path: path
-  };
-
-  const chooseItem = () => {
-    onEvent && onEvent('select', editorContext);
-    if (onSelectHandler) {
-      onSelectHandler(nextSelected);
-      return;
-    }
-    editorContext?.dispatch && editorContext?.dispatch((old) => ({
-      ...old,
-      selected: nextSelected
-    }));
+  const onClick = () => {
+    setSelection?.();
   };
 
   const deleteColumn = (e) => {
     e.stopPropagation();
-    editorContext?.dispatch && editorContext?.dispatch((old) => ({ ...old, selected: {} }));
-    delWidgetItem(editor, path);
-    historyRecord?.save();
+    deleteItem?.();
   };
 
-  const handleMouseOver = (e) => {
+  const onMouseOver = (e) => {
     e.stopPropagation();
     const target = e.currentTarget as HTMLElement;
-    if (target) {
-      target.classList.add(overCls);
-      setIsOver(true);
-    }
-    onMouseOver && onMouseOver(e);
+    setMouseOver?.(true, target);
   };
 
-  const handleMouseOut = (e) => {
+  const onMouseOut = (e) => {
     e.stopPropagation();
     const target = e.currentTarget as HTMLElement;
-    if (target) {
-      target.classList.remove(overCls);
-      setIsOver(false);
-    }
-    onMouseOut && onMouseOut(e);
+    setMouseOver?.(false, target);
   };
 
   const cls = classnames(prefixCls, className, {
-    [`${prefixCls}-active`]: isSelected,
+    [`${prefixCls}-active`]: checked,
   });
 
   const classes = {
@@ -98,13 +71,20 @@ const BaseSelection = React.forwardRef<HTMLDivElement, BaseSelectionProps>((prop
   };
 
   return (
-    <div ref={ref} className={cls} {...pickAttrs(restProps)} onClickCapture={chooseItem} onMouseOver={handleMouseOver} onMouseOut={handleMouseOut}>
-      {isOver && !isSelected && configLabel && <div className={classes.label}>{configLabel}</div>}
-      {(isOver || isSelected) && !hiddenDel && <SvgIcon className={classes.close} key="close" name="close" onClick={deleteColumn} />}
-      {isSelected && <div className={classes.tools}>{tools}</div>}
+    <div
+      ref={ref}
+      className={cls}
+      {...pickAttrs(restProps)}
+      onClickCapture={onClick}
+      onMouseOver={onMouseOver}
+      onMouseOut={onMouseOut}
+    >
+      {isOver && !checked && configLabel && <div className={classes.label}>{configLabel}</div>}
+      {(isOver || checked) && !hiddenDel && <SvgIcon className={classes.close} key="close" name="close" onClick={deleteColumn} />}
+      {checked && <div className={classes.tools}>{tools}</div>}
       {children}
     </div>
   );
 });
 
-export default BaseSelection;
+export default SelectionContainer(BaseSelection);

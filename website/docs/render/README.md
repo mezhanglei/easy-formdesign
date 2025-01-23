@@ -7,7 +7,7 @@ nav:
 ---
 
 # @simpleform/render
-[![](https://img.shields.io/badge/version-4.1.27-green)](https://www.npmjs.com/package/@simpleform/render)
+[![](https://img.shields.io/badge/version-4.1.29-green)](https://www.npmjs.com/package/@simpleform/render)
 
 > 基于`@simpleform/form`实现的轻量级动态表单引擎，实现动态渲染表单很简单.
 
@@ -71,7 +71,7 @@ const widgetList = [{
 - 节点类型
 继承`@simpleform/form`组件的[FormItemProps](./form#formitem)
 ```javascript
-// 带表单域的组件节点(字符串表达式编译后)
+// 带表单域的组件节点(parser编译后)
 export type GenerateWidgetItem<P = {}> = P & FormItemProps & {
   type?: string;
   props?: Record<string, unknown>;

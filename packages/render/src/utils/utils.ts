@@ -1,51 +1,24 @@
-import { arrayMove } from "./array";
-import { pathToArr, deepSet, joinFormPath, deepGet, FormPathType } from "@simpleform/form";
-import { WidgetList } from "../typings";
+import { deepSet, deepGet } from "@simpleform/form";
+import { WidgetList, WidgetOptions } from "../typings";
 
-// 获取路径的末尾节点
-export const getPathEnd = (path?: string) => {
-  const pathArr = pathToArr(path);
-  const end = pathArr?.pop();
-  return end;
-};
-
-// 根据路径返回父路径(兼容a[0],a.[0],a.b, a[0].b形式的路径)
-export const getParent = (path?: string) => {
-  const pathArr = pathToArr(path);
-  pathArr?.pop();
-  return joinFormPath(...pathArr);
-};
-
-// 获取路径的长度
-export const getPathLen = (path?: string) => {
-  const pathArr = pathToArr(path);
-  return pathArr.length;
+// 路径是否相等
+export const isEqualPath = (a, b) => {
+  if (typeof a === 'string' && typeof b === 'string') return a === b;
+  if (a instanceof Array && b instanceof Array) return a.toString() === b.toString();
+  return a === b;
 };
 
 // 设置指定路径的值
-export const setItemByPath = <V>(widgetList?: V, data?: unknown, path?: string) => {
-  const pathArr = pathToArr(path);
+export const setItemByPath = <V>(widgetList?: V, data?: unknown, path?: WidgetOptions['path']) => {
   // 无路径时表示设置当前值
-  if (pathArr.length == 0) return data as V;
+  if (!path?.length) return data as V;
   return deepSet(widgetList, path, data);
 };
 
 // 根据path获取指定路径的项
-export const getItemByPath = <V, Path extends FormPathType = string>(widgetList?: V, path?: Path) => {
+export const getItemByPath = <V, Path extends WidgetOptions['path']>(widgetList?: V, path?: Path) => {
+  if (!path?.length) return widgetList;
   return deepGet(widgetList, path);
-};
-
-// 根据index获取目标项
-export function getEntriesByIndex<T>(widgetList?: T[], index?: number, parent?: string): [number, T]
-export function getEntriesByIndex<T>(widgetList?: Record<string, T>, index?: number, parent?: string): [string, T]
-export function getEntriesByIndex<T>(widgetList?: T[] | Record<string, T>, index?: number, parent?: string) {
-  const container = (parent ? getItemByPath(widgetList, parent) : widgetList);
-  if (!container || typeof index !== 'number') return;
-  if (container instanceof Array) {
-    return [index, container[index]];
-  } else {
-    return Object.entries(container)[index] as [string, T];
-  }
 };
 
 // 转化为有序列表
@@ -71,10 +44,10 @@ export function parseEntries<T>(entries?: Array<[string, T]> | Array<[number, T]
   }
 };
 
-// 插入数据
-export const insertItemByIndex = (widgetList?: WidgetList, data?: unknown, index?: number, parent?: string) => {
-  const container = (parent ? getItemByPath(widgetList, parent) : widgetList);
-  if (!container || !data) return;
+// 通过序号插入数据
+export const insertItemByIndex = (widgetList: WidgetList | undefined, data: unknown, index?: number, parent?: WidgetOptions['path']) => {
+  const container = getItemByPath(widgetList, parent);
+  if (!(container instanceof Array) || data === undefined || data === '' || data === null) return widgetList;
   const entriesData = toEntries(container);
   const payload = toEntries(data instanceof Array ? data : [data]);
   if (typeof index === 'number') {
@@ -86,33 +59,27 @@ export const insertItemByIndex = (widgetList?: WidgetList, data?: unknown, index
   return setItemByPath(widgetList, changedChilds, parent);
 };
 
-// 同级调换位置
-export const moveSameLevel = (widgetList: WidgetList | undefined, from: { parent?: string, index: number }, to: { parent?: string, index?: number }) => {
-  const container = from?.parent ? getItemByPath(widgetList, from?.parent) : widgetList;
-  if (!container) return;
-  if (from?.parent === to?.parent) {
-    const entriesData = toEntries(container);
-    const toIndex = typeof to?.index === 'number' ? to?.index : entriesData?.length;
-    const newEntries = arrayMove(entriesData, from?.index, toIndex);
-    const result = parseEntries(newEntries);
-    return setItemByPath(widgetList, result, from?.parent);
-  }
-};
-
-// 跨级调换位置
-export const moveDiffLevel = (widgetList: WidgetList | undefined, from: { parent?: string, index: number }, to: { parent?: string, index?: number }) => {
-  const fromLen = getPathLen(from?.parent);
-  const toLen = getPathLen(to?.parent);
-  const entries = getEntriesByIndex(widgetList, from?.index, from?.parent);
-  if (!entries) return widgetList;
-  const fromData = parseEntries([entries]);
-  const fromPath = joinFormPath(from?.parent, from?.index);
-  // 先计算内部变动，再计算外部变动
-  if (fromLen > toLen || !toLen) {
-    const result = setItemByPath(widgetList, undefined, fromPath);
-    return insertItemByIndex(result, fromData, to?.index, to?.parent);
+// 调整位置
+export const moveItemByPath = (
+  widgetList: WidgetList | undefined,
+  fromPath: WidgetOptions['path'],
+  toPath: WidgetOptions['path'],
+) => {
+  if (!fromPath?.length) return widgetList;
+  const fromData = getItemByPath(widgetList, fromPath);
+  const toParent = toPath?.slice(0, toPath?.length - 1);
+  const toIndex = toPath?.[toPath?.length - 1];
+  const nextIndex = toIndex === undefined ? toIndex : +toIndex;
+  // 先变更内部，再变更外部
+  if (toPath && toPath?.length > fromPath?.length) {
+    // 先插入位置
+    const afterWidgetList = insertItemByIndex(widgetList, fromData, nextIndex, toParent);
+    // 删除源
+    return setItemByPath(afterWidgetList, undefined, fromPath);
   } else {
-    const result = insertItemByIndex(widgetList, fromData, to?.index, to?.parent);
-    return setItemByPath(result, undefined, fromPath);
+    // 先删除源
+    const afterWidgetList = setItemByPath(widgetList, undefined, fromPath);
+    // 插入位置
+    return insertItemByIndex(afterWidgetList, fromData, nextIndex, toParent);
   }
 };

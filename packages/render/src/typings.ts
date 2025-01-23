@@ -12,7 +12,7 @@ export interface RegisteredComponents<P = any> {
 }
 // 表单对象
 export type WidgetList<P = {}> = Array<WidgetItem<P>>
-// 组件节点(字符串表达式编译后)
+// 组件节点(parser编译后)
 export type GenerateWidgetItem<P = {}> = P & FormItemProps & {
   type?: string | ReactComponent<any>;
   props?: Record<string, unknown>;
@@ -24,7 +24,7 @@ export type GenerateWidgetItem<P = {}> = P & FormItemProps & {
   typeRender?: ReactNode | ((context?: WidgetContextProps) => ReactNode); // 表单控件自定义渲染
   hidden?: boolean;
 };
-// 组件节点(字符串表达式编译前)
+// 组件节点(parser编译前)
 export type WidgetItem<P = {}> = {
   [key in keyof GenerateWidgetItem<P>]: (string | GenerateWidgetItem<P>[key])
 }
@@ -33,7 +33,7 @@ export type WidgetOptions<P = {}> = GenerateWidgetItem<P> &
   Pick<FormChildrenProps, 'formrender'> &
   Pick<FormProps, 'form'> & {
     index?: number;
-    path?: string;
+    path?: Array<string | number>;
   }
 export type WidgetContextProps<P = {}> = { _options?: WidgetOptions<P> };
 export type CustomRenderType = <C, P = {}>(children?: C, context?: WidgetContextProps<P>) => C;

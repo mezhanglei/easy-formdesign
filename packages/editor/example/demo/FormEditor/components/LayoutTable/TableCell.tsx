@@ -12,7 +12,7 @@ import './index.less';
 import { Menu, MenuDivider, MenuItem } from '@szhsin/react-menu';
 import '@szhsin/react-menu/dist/index.css';
 import { LayoutTableRows } from '.';
-import { joinFormPath, renderWidgetItem } from '../../FormRender';
+import { renderWidgetItem } from '../../FormRender';
 
 export type CustomTableCellProps = React.HtmlHTMLAttributes<HTMLTableCellElement> & BaseSelectionProps & {
   rows: NonNullable<LayoutTableRows>;
@@ -99,7 +99,7 @@ const CustomTableCell = React.forwardRef<HTMLTableCellElement, CustomTableCellPr
     const _childOptions = {
       ...commonOptions,
       index: childIndex,
-      path: joinFormPath(path, 'children', childIndex),
+      path: (path || []).concat('children', childIndex),
     };
     const instance = renderWidgetItem(formrender, child, _childOptions);
     return instance;
@@ -136,15 +136,15 @@ const CustomTableCell = React.forwardRef<HTMLTableCellElement, CustomTableCellPr
           className="cell-selection"
           configLabel="单元格"
           tools={[operateBtn]}
-          onSelectHandler={(nextSelected) => {
-            editorContext?.dispatch((old) => ({ ...old, selected: nextSelected }));
+          getter={(path) => {
             handleSelectCell(rowIndex, colIndex);
+            return { path };
           }}
         >
           <BaseDnd
             _options={_options}
             style={{ height: '100%' }}
-            dndPath={joinFormPath(path, 'children')}
+            dndPath={(path || []).concat('children')}
             dndList={widgetList}>
             {childs}
           </BaseDnd>

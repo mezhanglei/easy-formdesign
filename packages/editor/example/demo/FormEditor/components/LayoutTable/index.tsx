@@ -1,7 +1,7 @@
 import React, { CSSProperties, useMemo } from "react";
 import classnames from "classnames";
 import './index.less';
-import { 
+import {
   pickAttrs,
   CommonFormProps,
   EditorGenerateWidgetItem,
@@ -14,7 +14,6 @@ import {
 } from "@simpleform/editor";
 import TableCell from './TableCell';
 import { TableCellConfig } from "./config";
-import { joinFormPath } from "../../FormRender";
 
 const prefix = "r-";
 export const Classes = {
@@ -39,7 +38,7 @@ const Table = React.forwardRef<HTMLTableElement, LayoutTableProps>((props, ref) 
   const { _options } = rest || {};
   const { formrender, isEditor, rows = [], path: tablePath } = _options || {};
   const commonOptions = getCommonOptions(_options);
-  const rowsPath = joinFormPath(tablePath, 'rows');
+  const rowsPath = (tablePath || []).concat('rows');
   const tableUtils = useMemo(() => new TableUtils<{
     children: LayoutTableRows
   }>(rows, {
@@ -74,15 +73,15 @@ const Table = React.forwardRef<HTMLTableElement, LayoutTableProps>((props, ref) 
         {
           rows?.map((cols, rowIndex) => {
             return (
-              <tr className={Classes.TableRow} key={joinFormPath(tablePath, rowIndex)}>
+              <tr className={Classes.TableRow} key={rowIndex}>
                 {
                   cols?.map((col, colIndex) => {
                     const _childOptions = {
                       ...commonOptions,
                       index: colIndex,
-                      path: joinFormPath(tablePath, 'rows', rowIndex, colIndex),
+                      path: tablePath.concat('rows', rowIndex, colIndex),
                     };
-                    return <TableCell key={_childOptions?.path} {...col} tableUtils={tableUtils} className={Classes.TableCell} rows={rows} rowIndex={rowIndex} cols={cols} colIndex={colIndex} _options={_childOptions} />;
+                    return <TableCell key={colIndex} {...col} tableUtils={tableUtils} className={Classes.TableCell} rows={rows} rowIndex={rowIndex} cols={cols} colIndex={colIndex} _options={_childOptions} />;
                   })
                 }
               </tr>

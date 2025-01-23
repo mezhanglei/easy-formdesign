@@ -1,21 +1,21 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { SimpleFormContext, FormInitialValuesContext } from './context';
-import { deepGet, getValueFromEvent, toArray } from './utils/utils';
+import { deepGet, FormPathType, getValueFromEvent, isValidFormName, toArray } from './utils/utils';
 import { FormRule } from './validator';
 import { isEmpty } from './utils/type';
 import { FormProps } from './form';
 
 type TriggerType = string;
-export type FormEventHandler<V = unknown, A = unknown> = (obj: { name?: string; value?: V }, values?: A) => void;
+export type FormEventHandler<V = unknown, A = unknown> = (obj: { name?: FormPathType; value?: V }, values?: A) => void;
 export interface ItemCoreProps {
-  name?: string;
+  name?: FormPathType;
   nonform?: boolean;
   index?: number;
   trigger?: TriggerType; // 设置收集字段值变更的时机
   validateTrigger?: TriggerType | TriggerType[];
   valueProp?: string | ((type: string) => string);
   valueGetter?: typeof getValueFromEvent;
-  valueSetter?: <V>(value: V) => V;
+  valueSetter?: (value) => unknown;
   rules?: FormRule[];
   initialValue?: unknown;
   errorClassName?: string;
@@ -73,14 +73,14 @@ export const ItemCore = (props: ItemCoreProps) => {
 
   const fieldProps = { ...restProps, valueProp, valueGetter, trigger };
   const nonform = rest?.nonform || rest?.readOnly;
-  const currentPath = (isEmpty(name) || nonform === true) ? undefined : name;
+  const currentPath = (!isValidFormName(name) || nonform === true) ? undefined : name;
   const [value, setValue] = useState<unknown>();
   // 初始化fieldProps
   form?.setFieldProps(currentPath, fieldProps);
 
   // 订阅更新值的函数
   useEffect(() => {
-    if (!currentPath || !form) return;
+    if (!isValidFormName(currentPath) || !form) return;
     // 订阅目标控件
     form.subscribeFormItem(currentPath, (newValue, oldValue) => {
       setValue(newValue);
@@ -94,13 +94,12 @@ export const ItemCore = (props: ItemCoreProps) => {
 
   // 表单域初始化值
   useEffect(() => {
-    if (!currentPath || !form) return;
+    if (!isValidFormName(currentPath) || !form) return;
     // 回填初始值
     const initValue = initialValue === undefined ? deepGet(initialValues, currentPath) : initialValue;
     form.setInitialValue(currentPath, initValue);
     onFieldsMounted && onFieldsMounted({ name: currentPath, value: initValue }, form?.getFieldValue());
     return () => {
-      if (!currentPath) return;
       // 清除该表单域的props(在设置值的前面)
       form?.setFieldProps(currentPath, undefined);
       // 清除初始值

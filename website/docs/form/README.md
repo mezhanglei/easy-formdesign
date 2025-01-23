@@ -7,7 +7,7 @@ nav:
 ---
 
 # @simpleform/form
-[![](https://img.shields.io/badge/version-2.1.15-green)](https://www.npmjs.com/package/@simpleform/form)
+[![](https://img.shields.io/badge/version-2.2.2-green)](https://www.npmjs.com/package/@simpleform/form)
 
 > 表单底层组件，通过回调函数方式实现表单值的显示和更新事件的绑定.
 
@@ -36,8 +36,11 @@ import '@simpleform/form/lib/css/main.css'
 ### Hooks
 
 - `useSimpleForm`: `(defaultValues) => SimpleForm` 等于`new SimpleForm()`
-- `useFormError`: `(form: SimpleForm, path?: string) => [string, (val: string) => void]` 使用 hooks 获取指定的报错信息。
-- `useFormValues`: `(form: SimpleForm, path?: string | string[]) => unknown`使用 hooks 获取指定的表单值。
+- `useFormError`: `(form: SimpleForm, path?: FormPathType) => [string, (val: string) => void]` 使用 hooks 获取指定的报错信息。
+- `useFormValues`: `(form: SimpleForm, path?: FormPathType | Array<FormPathType>) => unknown`使用 hooks 获取表单值，支持单个或多个目标的表单值提取
+:::warning
+`>=2.2.2`版本`useFormValues`方法可以在完整表单值中提取对应路径的值组合成新的表单值，旧版本只会返回路径和值的映射。
+:::
 
 ### Form
 
@@ -49,8 +52,8 @@ import '@simpleform/form/lib/css/main.css'
 | `initialValues`     | 表单的初始值     | -                                 | -        |
 |  `onSubmit`    |  标签提交事件    |        `(e) => void`                          | -        |
 |   `onReset`   |  重置默认值事件, 只有`htmlType=reset`的`button`标签才可以触发    |    `() => void`                              | -        |
-|  `onFieldsChange`    |  表单控件`onChange` 变化时的事件函数，只会被控件主动`onChange`触发，不会被`form.setFieldValue`和`form.setFieldsValue`触发, 避免循环调用    |      `(item: {name: string, value: unknown}, values: unknown)=> void`       | -        |
-|  `onValuesChange`    |   监听表单值的变化, 只要表单值有变化无论是初始值赋值场景还是其他场景下值的变更都会被监听到   |    `(item: {name: string, value: unknown}, values: unknown)=> void` | -        |
+|  `onFieldsChange`    |  表单控件`onChange` 变化时的事件函数，只会被控件主动`onChange`触发，不会被`form.setFieldValue`和`form.setFieldsValue`触发, 避免循环调用    |      `(item: {name: FormPathType, value: unknown}, values: unknown)=> void`       | -        |
+|  `onValuesChange`    |   监听表单值的变化, 只要表单值有变化无论是初始值赋值场景还是其他场景下值的变更都会被监听到   |    `(item: {name: FormPathType, value: unknown}, values: unknown)=> void` | -        |
 |  `watch`    |   监听表单中某个控件的`name`字段对应的表单值   |   -  | -        |
 
 ### component
@@ -79,15 +82,15 @@ import '@simpleform/form/lib/css/main.css'
 | -------------- | --------------- | ------- | ------ |
 |`className`     | 类名     | `string` |  -  |
 |`component`   | 控件外层的显示组件，可更换其他自定义样式的组件 |   | [跳转](#component)     |
-|`name`   |  表单控件的字段名  |   | -      |
+|`name`   |  表单控件的字段名  | `type FormPathType = string/number/Array<string/number>`  | -      |
 |`validateTrigger`| 设置表单域校验的触发事件, 默认`onChange` | `boolean`或`onChange/onBlur`等  | `onChange`      |
 |`valueProp` | 给控件绑定值的`props`是哪个字符 | `string`  | `value` |
 |`valueGetter`| 格式化输出表单值的函数，一般配合`valueSetter`使用 | `<T>(value: T)=> T`  | -      |
 |`valueSetter`| 格式化输入表单值的函数，配合`valueGetter`使用 | `<T>(value: T)=> T`  | -      |
 |`rules` | 表单域的校验规则 | `FormRule[]`  |    [跳转](#rules)    |
 |`initialValue`| 表单域的初始值，只能表单初始化时渲染时赋值 |   | -      |
-|  `onFieldsChange`    |  表单控件`onChange` 变化时的事件函数，只会被控件主动`onChange`触发，不会被`form.setFieldValue`和`form.setFieldsValue`触发, 避免循环调用    |      `(item: {name: string, value: unknown}, values: unknown)=> void`       | -        |
-|  `onValuesChange`    |   监听表单值的变化, 只要表单值有变化无论初始值还是其他变更都会被监听到   |    `(item: {name: string, value: unknown}, values: unknown)=> void` | -        |
+|  `onFieldsChange`    |  表单控件`onChange` 变化时的事件函数，只会被控件主动`onChange`触发，不会被`form.setFieldValue`和`form.setFieldsValue`触发, 避免循环调用    |      `(item: {name: FormPathType, value: unknown}, values: unknown)=> void`       | -        |
+|  `onValuesChange`    |   监听表单值的变化, 只要表单值有变化无论初始值还是其他变更都会被监听到   |    `(item: {name: FormPathType, value: unknown}, values: unknown)=> void` | -        |
 |`errorClassName` | 控件当有错误信息时，添加一个自定义类名 | `string`  | -      |
 
 ### rules
@@ -108,9 +111,9 @@ import '@simpleform/form/lib/css/main.css'
 
 | form实例方法     | 说明           | 类型                          |
 | -------------- | -------------- | ----------------------------- |
-| `getFieldValue` | 返回指定`path`的表单域的值，不指定`path`返回整个表单的值。 | `(path?: string) => unknown ` | |
-| `setFieldValue`    |   更新指定`name`字段的值    |  `(path: string, value: unknown) => void`   |
+| `getFieldValue` | 返回指定`path`的表单域的值，不指定`path`返回整个表单的值。 | `(path?: FormPathType) => unknown ` | |
+| `setFieldValue`    |   更新指定`name`字段的值    |  `(path: FormPathType, value: unknown) => void`   |
 | `setFieldsValue`    |  设置整个表单的值(覆盖)    |  `(values: unknown) => void`   |
 | `reset`    |   重置表单, 可以传值重置为目标值     |  `(values?: unknown) => void`   |
-| `validate`  |   校验表单，并返回错误信息和表单值。    |   `(path?: string[]/string) => {error: true/string; values: unknown}`  |
-|  `getFieldError`   |  返回目标的错误信息或所有的错误信息   |  `(path?: string) => string | boolean`   |
+| `validate`  |   校验表单，并返回错误信息和表单值。支持单个或多个目标校验    |   `(path?: FormPathType/Array<FormPathType>) => {error: true/string; values: unknown}`  |
+|  `getFieldError`   |  返回目标的错误信息或所有的错误信息   |  `(path?: FormPathType) => string | boolean`   |

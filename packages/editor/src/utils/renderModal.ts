@@ -71,11 +71,11 @@ const renderModal = (Template, props, options?: { unmountDelay?: number }) => {
           unmountModal(instance, unmountDelay);
         }
       };
+      const template = React.createElement(Template, params);
+      instance?.render(template);
       if (unmountDelay) {
         unmountModal(instance, unmountDelay);
       }
-      const template = React.createElement(Template, params);
-      instance?.render(template);
     }
   };
 };

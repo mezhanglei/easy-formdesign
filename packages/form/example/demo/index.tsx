@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import "./index.less";
 // import { Form, useSimpleForm } from '../../lib';
-import { Form, useSimpleForm } from '../../src';
+import { Form, useFormValues, useSimpleForm } from '../../src';
 
 export default function Demo() {
 
@@ -18,17 +18,18 @@ export default function Demo() {
       return Promise.reject(new Error('length is < 2'));
     }
   };
-
+  const formData = useFormValues(form, ['[0].name1', '[1].name2']);
+  console.log(formData, '值');
   return (
-    <Form initialValues={{ name1: 1111 }} form={form} onSubmit={onSubmit}>
-      <Form.Item tooltip='11111' label="Name1" name="name1" rules={[{ required: true, message: 'name1 is Empty' }, { validator: validator, message: '自定义校验' }]}>
+    <Form initialValues={[{ name1: 1111 }]} form={form} onSubmit={onSubmit}>
+      <Form.Item tooltip='11111' label="Name1" name="[0].name1" rules={[{ required: true, message: 'name1 is Empty' }, { validator: validator, message: '自定义校验' }]}>
         {({ bindProps }) => (
           <div>
             <input {...bindProps} />
           </div>
         )}
       </Form.Item>
-      <Form.Item label="Name2" name="name2.a" rules={[{ required: true, message: 'name2 is empty' }]}>
+      <Form.Item label="Name2" name="[1].name2" rules={[{ required: true, message: 'name2 is empty' }]}>
         {({ bindProps }) => <input style={{ height: '100px' }} {...bindProps} />}
       </Form.Item>
       <Form.Item label="">

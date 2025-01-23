@@ -1,0 +1,56 @@
+{
+  "name": "@simpleform/rule",
+  "version": "0.0.1",
+  "description": "rule builder",
+  "author": "mezhanglei <496623925@qq.com>",
+  "homepage": "https://github.com/mezhanglei/simpleform#readme",
+  "license": "ISC",
+  "main": "lib/index.js",
+  "types": "./lib/index.d.ts",
+  "directories": {
+    "lib": "lib",
+    "src": "src",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib",
+    "README.md",
+    "README_CN.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mezhanglei/simpleform.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build:dist": "cross-env NODE_ENV=dist webpack --progress --config ./build/webpack.prod.js",
+    "build": "cross-env NODE_ENV=prod webpack --progress --config ./build/webpack.prod.js && tsc -d",
+    "stats": "cross-env NODE_ENV=prod webpack --progress --config ./build/webpack.prod.js --json > stats.json",
+    "start": "cross-env NODE_ENV=dev webpack serve --config ./build/webpack.dev.js",
+    "lint": "eslint --ext=.js,.ts,.jsx,.tsx src/",
+    "lint:fix": "eslint --fix --ext=.js,.ts,.jsx,.tsx src/",
+    "csslint": "stylelint src/**/*.{css,scss,less}",
+    "csslint:fix": "stylelint src/**/*.{css,scss,less} --fix"
+  },
+  "devDependencies": {
+    "antd": "^5.11.1",
+    "history": "^5.3.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.19.0"
+  },
+  "dependencies": {
+    "@simpleform/form": "^2.2.3",
+    "classnames": "^2.3.2",
+    "nanoid": "^5.0.7"
+  },
+  "peerDependencies": {
+    "antd": ">=4.0.0",
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0",
+    "react-router-dom": ">=5.0.0"
+  }
+}

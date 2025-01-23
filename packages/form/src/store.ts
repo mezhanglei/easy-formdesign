@@ -1,75 +1,54 @@
-import { deepGet, deepSet, getValuePropName, comparePrefix } from './utils/utils';
+import { deepGet, deepSet, getValuePropName, comparePrefix, FormPathType, isValidFormName, isEqualName } from './utils/utils';
 import { deepClone } from './utils/object';
 import { handleRules, isCanTrigger } from './validator';
 import { getRulesTriggers, mergeTriggers } from './core';
 import { isEmpty, isObject } from './utils/type';
 import { FormItemProps } from './form-item';
-import { PathValue } from './typings';
+import { GetMapValueType, PathValue } from './typings';
 
-export type FormListener<V> = { path: string, onChange: (newValue?: V, oldValue?: V) => void }
+const bindClassPrototype = (Factory, instance) => {
+  const attrs = Object.getOwnPropertyDescriptors(Factory?.prototype);
+  for (const key in attrs) {
+    const attr = instance[key];
+    if (typeof attr === 'function' && key !== 'constructor') {
+      instance[key] = instance[key].bind(instance);
+    }
+  }
+};
 
-export type FormErrors = Record<string, string | boolean>;
+export type FormListener<V> = { path: FormPathType, onChange: (newValue?: V, oldValue?: V) => void }
+
+export type FormErrors = Map<FormPathType, string | boolean>;
 
 export type FieldProps = FormItemProps;
 
-export type FormFieldsProps = Record<string, FieldProps>;
+export type FormFieldsProps = Map<FormPathType, FieldProps>;
 
 export class SimpleForm<T = unknown> {
 
   private formItemListeners: Array<FormListener<unknown>> = [];
   private formValueListeners: Array<FormListener<unknown>> = [];
   private globalFormListeners: Array<FormListener<T>['onChange']> = [];
-  private errorListeners: Array<FormListener<ReturnType<SimpleForm['getFieldError']>>> = [];
+  private errorListeners: Array<FormListener<GetMapValueType<FormErrors>>> = [];
 
   private initialValues?: unknown;
   private values?: unknown;
   private lastValues?: unknown;
   private debounceCache?: WeakMap<Function, unknown>;
-  private formErrors: FormErrors = {};
-  private fieldPropsMap: FormFieldsProps = {};
+  private formErrors: FormErrors;
+  private fieldPropsMap: FormFieldsProps;
 
   public constructor(values?: T) {
     this.initialValues = values;
-    this.fieldPropsMap = {};
-    this.formErrors = {};
     this.values = deepClone(values);
+    this.fieldPropsMap = new Map();
+    this.formErrors = new Map();
     this.debounceCache = new WeakMap();
-    this.getFieldValue = this.getFieldValue.bind(this);
-    this.getLastValue = this.getLastValue.bind(this);
-    this.setFieldValue = this.setFieldValue.bind(this);
-    this.setFieldsValue = this.setFieldsValue.bind(this);
-    this.getInitialValues = this.getInitialValues.bind(this);
-    this.setInitialValue = this.setInitialValue.bind(this);
-    this.getFieldError = this.getFieldError.bind(this);
-    this.setFieldError = this.setFieldError.bind(this);
-    this.setFieldsError = this.setFieldsError.bind(this);
-
-    this.getFieldProps = this.getFieldProps.bind(this);
-    this.setFieldProps = this.setFieldProps.bind(this);
-    this.getBindProps = this.getBindProps.bind(this);
-    this.bindChange = this.bindChange.bind(this);
-    this.debounceHandler = this.debounceHandler.bind(this);
-
-    this.reset = this.reset.bind(this);
-    this.validate = this.validate.bind(this);
-    this.notifyForm = this.notifyForm.bind(this);
-
-    this.subscribeError = this.subscribeError.bind(this);
-    this.unsubscribeError = this.unsubscribeError.bind(this);
-    this.notifyError = this.notifyError.bind(this);
-
-    this.subscribeFormItem = this.subscribeFormItem.bind(this);
-    this.unsubscribeFormItem = this.unsubscribeFormItem.bind(this);
-    this.notifyFormItem = this.notifyFormItem.bind(this);
-    this.notifyGlobalForm = this.notifyGlobalForm.bind(this);
-
-    this.subscribeFormValue = this.subscribeFormValue.bind(this);
-    this.unsubscribeFormValue = this.unsubscribeFormValue.bind(this);
-    this.notifyFormValue = this.notifyFormValue.bind(this);
+    bindClassPrototype(SimpleForm, this);
   }
 
   // 防抖执行函数（函数引用要保持不变）
-  private debounceHandler(func?: Function, ...args: unknown[]) {
+  private debounceCall(func?: Function, ...args: unknown[]) {
     if (typeof func !== 'function') return;
     const lastTime = this.debounceCache?.get(func);
     clearTimeout(lastTime as number);
@@ -80,18 +59,18 @@ export class SimpleForm<T = unknown> {
 
   // 获取
   public getFieldProps(): FormFieldsProps
-  public getFieldProps(path: string): FieldProps
-  public getFieldProps(path?: string) {
+  public getFieldProps(path: FormPathType): GetMapValueType<FormFieldsProps>
+  public getFieldProps(path?: FormPathType) {
     if (path === undefined) {
       return this.fieldPropsMap;
     } else {
-      return this.fieldPropsMap?.[path];
+      return this.fieldPropsMap.get(path);
     }
   }
 
   // 给目标控件绑定change事件
-  bindChange(path?: string, eventName?: string, ...args) {
-    if (!path) return;
+  bindChange(path?: FormPathType, eventName?: string, ...args) {
+    if (!isValidFormName(path)) return;
     const props = this.getFieldProps(path);
     const { valueGetter, onFieldsChange } = props || {};
     const newValue = typeof valueGetter == 'function' ? valueGetter(...args) : undefined;
@@ -101,15 +80,15 @@ export class SimpleForm<T = unknown> {
   }
 
   // 给目标控件绑定的props
-  getBindProps<V>(path?: string, newValue?: V) {
-    if (!path) return;
+  getBindProps<V>(path?: FormPathType, newValue?: V) {
+    if (!isValidFormName(path)) return;
     const props = this.getFieldProps(path);
     const currentValue = newValue !== undefined ? newValue : this.getFieldValue(path);
     const { valueProp, valueSetter, trigger, validateTrigger, rules, nonform } = props || {};
     const valuePropName = getValuePropName(valueProp) || "";
     const triggers = mergeTriggers(trigger, validateTrigger, getRulesTriggers(rules));
     const childValue = typeof valueSetter === 'function' ? valueSetter(currentValue) : (valueSetter ? undefined : currentValue);
-    const bindProps = { [valuePropName]: childValue } as Record<string, unknown>;
+    const bindProps = { [valuePropName]: childValue } as Record<string, any>;
     triggers.forEach((eventName) => {
       bindProps[eventName] = (...args) => {
         this.bindChange(path, eventName, ...args);
@@ -119,39 +98,40 @@ export class SimpleForm<T = unknown> {
   }
 
   // 设置表单域
-  public setFieldProps<V>(path?: string, field?: V) {
-    if (!path) return;
-    const lastField = this.fieldPropsMap[path];
+  public setFieldProps<V>(path?: FormPathType, field?: V) {
+    if (!isValidFormName(path)) return;
+    const lastField = this.fieldPropsMap.get(path);
     if (field === undefined) {
       if (lastField !== undefined) {
-        delete this.fieldPropsMap[path];
+        this.fieldPropsMap.delete(path);
       }
     } else {
       const newField = Object.assign({}, lastField, field);
-      this.fieldPropsMap[path] = newField;
+      this.fieldPropsMap.set(path, newField);
     };
   }
 
   // 获取所有表单值，或者单个表单值
   public getFieldValue(): T
-  public getFieldValue(path: string): PathValue<T, string>
-  public getFieldValue(path?: string | undefined) {
+  public getFieldValue<P extends FormPathType>(path: P): PathValue<T, P>
+  public getFieldValue<P extends FormPathType>(path?: P) {
     const val = this.values;
     return path === undefined ? val : deepGet(val, path);
   }
 
   // 获取旧表单值
   public getLastValue(): T
-  public getLastValue(path: string): PathValue<T, string>
-  public getLastValue(path?: string) {
+  public getLastValue<P extends FormPathType>(path: P): PathValue<T, P>
+  public getLastValue<P extends FormPathType>(path?: P) {
     const val = this.lastValues;
     return path === undefined ? val : deepGet(val, path);
   }
 
   // 初始值设置
-  public setInitialValue(path: string, initialValue?: unknown) {
+  public setInitialValue(path?: FormPathType, initialValue?: unknown) {
+    if (!isValidFormName(path)) return;
     const oldValue = this.getFieldValue(path);
-    if (isEmpty(oldValue) && isEmpty(initialValue)) return;
+    if (isEmpty(oldValue) && isEmpty(initialValue) || !isEmpty(oldValue)) return;
     this.initialValues = deepSet(this.initialValues, path, initialValue);
     // 旧表单值存储
     this.lastValues = this.values;
@@ -160,22 +140,23 @@ export class SimpleForm<T = unknown> {
     this.notifyForm(path);
   }
 
-  public notifyForm(path?: string) {
+  public notifyForm(path?: FormPathType) {
     this.notifyFormItem(path);
     this.notifyFormValue(path);
   }
 
   // 获取初始值
-  public getInitialValues(path?: string) {
+  public getInitialValues(path?: FormPathType) {
     return path === undefined ? this.initialValues : deepGet(this.initialValues, path);
   }
 
   // 更新表单值，单个表单值或多个表单值
   public setFieldValue(path: object, eventName?: FieldProps['trigger']): void;
-  public setFieldValue(path: string, value?: unknown, eventName?: FieldProps['trigger']): void;
-  public setFieldValue(path: string | object, value?: unknown, eventName?: FieldProps['trigger']) {
+  public setFieldValue(path: FormPathType, value?: unknown, eventName?: FieldProps['trigger']): void;
+  public setFieldValue(path: FormPathType | object, value?: unknown, eventName?: FieldProps['trigger']) {
     // 设置单个表单值
-    const setFormItemValue = (path: string, value?: unknown, eventName?: FieldProps['trigger']) => {
+    const setFormItemValue = (path: FormPathType, value?: unknown, eventName?: FieldProps['trigger']) => {
+      if (!isValidFormName(path)) return;
       // 旧表单值存储
       this.lastValues = this.values;
       // 设置值
@@ -190,11 +171,10 @@ export class SimpleForm<T = unknown> {
       this.notifyForm(path);
     };
 
-    if (typeof path === 'string') {
-      setFormItemValue(path, value, eventName);
-    } else if (isObject(path)) {
-      // @ts-ignore
+    if (isObject(path)) {
       Promise.all(Object.keys(path).map((n) => setFormItemValue(n, path?.[n])));
+    } else {
+      setFormItemValue(path, value, eventName);
     }
   }
 
@@ -208,42 +188,42 @@ export class SimpleForm<T = unknown> {
   // 重置表单
   public reset<V>(endValues?: V) {
     const end = endValues || this.initialValues;
-    this.setFieldsError({});
+    this.setFieldsError(undefined);
     this.setFieldsValue(end);
   }
 
   // 获取error信息
   public getFieldError(): FormErrors
-  public getFieldError(path: string): FormErrors[string]
-  public getFieldError(path?: string) {
+  public getFieldError(path: FormPathType): GetMapValueType<FormErrors>
+  public getFieldError(path?: FormPathType) {
     if (path === undefined) {
       return this.formErrors;
     } else {
-      return this.formErrors[path];
+      return this.formErrors.get(path);
     }
   }
 
   // 更新error信息
-  private setFieldError(path: string, val?: FormErrors[string]) {
-    if (!path) return;
+  private setFieldError(path: FormPathType, val?: GetMapValueType<FormErrors>) {
+    if (!isValidFormName(path)) return;
     if (val === undefined) {
-      delete this.formErrors[path];
+      this.formErrors.delete(path);
     } else {
-      this.formErrors[path] = val;
+      this.formErrors.set(path, val);
     }
     this.notifyError(path);
   }
 
   // 设置error信息(覆盖更新)
   private setFieldsError(erros?: FormErrors) {
-    this.formErrors = { ...erros };
+    this.formErrors = erros || new Map();
     this.notifyError();
   }
 
   // 校验整个表单或校验表单中的某个控件
-  public async validate(path?: string | string[], eventName?: FieldProps['trigger']) {
+  public async validate(path?: FormPathType | Array<FormPathType>, eventName?: FieldProps['trigger']) {
 
-    const validateError = async (path: string) => {
+    const validateError = async (path: FormPathType) => {
       this.setFieldError(path, undefined);
       const fieldProps = this.getFieldProps(path) || {};
       const value = this.getFieldValue(path);
@@ -259,17 +239,18 @@ export class SimpleForm<T = unknown> {
       }
     };
 
-    if (typeof path === 'string') {
+    // 是否为单条路径
+    if (!(path instanceof Array) && path !== undefined) {
       const currentError = await validateError(path);
       return {
         error: currentError,
         values: this.getFieldValue()
       };
     } else {
-      const fieldPropsMap = this.getFieldProps() || {};
-      const keys = path instanceof Array ? path : Object.keys(fieldPropsMap || {});
+      const fieldPropsMap = this.getFieldProps();
+      const keys = path instanceof Array ? path : Array.from(fieldPropsMap.keys());
       const result = await Promise.all(keys?.map((key) => {
-        const fieldProps = fieldPropsMap?.[key];
+        const fieldProps = fieldPropsMap.get(key);
         const rules = fieldProps?.['rules'];
         if (rules instanceof Array) {
           return validateError(key);
@@ -284,7 +265,8 @@ export class SimpleForm<T = unknown> {
   }
 
   // 订阅当前表单域值的变动(当表单域消失时会卸载)
-  public subscribeFormItem(path: string, listener: SimpleForm<T>['formItemListeners'][number]['onChange']) {
+  public subscribeFormItem(path?: FormPathType, listener?: SimpleForm<T>['formItemListeners'][number]['onChange']) {
+    if (!isValidFormName(path) || !listener) return;
     this.formItemListeners.push({
       onChange: listener,
       path: path
@@ -294,69 +276,71 @@ export class SimpleForm<T = unknown> {
     };
   }
   // 卸载
-  public unsubscribeFormItem(path?: string) {
+  public unsubscribeFormItem(path?: FormPathType) {
     if (path === undefined) {
       this.formItemListeners = [];
-    } else if (typeof path === 'string') {
-      this.formItemListeners = this.formItemListeners.filter((sub) => sub.path !== path);
+    } else if (isValidFormName(path)) {
+      this.formItemListeners = this.formItemListeners.filter((sub) => !isEqualName(sub.path, path));
     }
   }
   // 同步当前表单域值的变化
-  private notifyFormItem(path?: string) {
-    if (path) {
+  private notifyFormItem(path?: FormPathType) {
+    if (path === undefined) {
+      this.formItemListeners.forEach((listener) => listener.onChange(this.getFieldValue(listener.path), this.getLastValue(listener.path)));
+    } else {
       this.formItemListeners.forEach((listener) => {
-        if (listener?.path === path) {
+        if (isEqualName(listener?.path, path)) {
           listener?.onChange && listener?.onChange(this.getFieldValue(listener.path), this.getLastValue(listener.path));
         }
       });
-    } else {
-      this.formItemListeners.forEach((listener) => listener.onChange(this.getFieldValue(listener.path), this.getLastValue(listener.path)));
     }
   }
 
   // 主动订阅路径上所有表单控件的变动(表单控件消失不会卸载)
   public subscribeFormValue(listener: FormListener<unknown>['onChange']): () => void
-  public subscribeFormValue(path: string, listener: FormListener<unknown>['onChange']): () => void
-  public subscribeFormValue(path: string | FormListener<unknown>['onChange'], listener?: FormListener<unknown>['onChange']) {
-    if (typeof path === 'string' && listener) {
+  public subscribeFormValue(path: FormPathType, listener: FormListener<unknown>['onChange']): () => void
+  public subscribeFormValue(path: FormPathType | FormListener<unknown>['onChange'], listener?: FormListener<unknown>['onChange']) {
+    if (typeof path === 'function') {
+      this.globalFormListeners.push(path);
+    } else {
+      if (!isValidFormName(path) || !listener) return;
       this.formValueListeners.push({
         onChange: listener,
         path: path
       });
-    } else if (typeof path === 'function') {
-      this.globalFormListeners.push(path);
     }
     return () => {
-      this.unsubscribeFormValue(typeof path === 'string' ? path : undefined);
+      this.unsubscribeFormValue(typeof path !== 'function' ? path : undefined);
     };
   }
   // 卸载
-  public unsubscribeFormValue(path?: string) {
+  public unsubscribeFormValue(path?: FormPathType) {
     if (path === undefined) {
       this.formValueListeners = [];
-    } else if (typeof path === 'string') {
-      this.formValueListeners = this.formValueListeners.filter((sub) => sub.path !== path);
+    } else if (isValidFormName(path)) {
+      this.formValueListeners = this.formValueListeners.filter((sub) => !isEqualName(sub.path, path));
     }
   }
   // 同步路径上任意节点的变化
-  public notifyFormValue(path?: string) {
-    if (path) {
+  public notifyFormValue(path?: FormPathType) {
+    if (path === undefined) {
+      this.formValueListeners.forEach((listener) => listener.onChange(this.getFieldValue(listener.path), this.getLastValue(listener.path)));
+    } else {
       this.formValueListeners.forEach((listener) => {
         if (comparePrefix(listener?.path, path)) {
           listener?.onChange && listener?.onChange(this.getFieldValue(listener.path), this.getLastValue(listener.path));
         }
       });
-    } else {
-      this.formValueListeners.forEach((listener) => listener.onChange(this.getFieldValue(listener.path), this.getLastValue(listener.path)));
     }
-    this.debounceHandler(this.notifyGlobalForm);
+    this.debounceCall(this.notifyGlobalForm);
   }
   public notifyGlobalForm() {
     this.globalFormListeners.forEach((listener) => listener?.(this.getFieldValue(), this.getLastValue()));
   }
 
   // 订阅表单错误的变动
-  public subscribeError(path: string, listener: SimpleForm<T>['errorListeners'][number]['onChange']) {
+  public subscribeError(path?: FormPathType, listener?: SimpleForm<T>['errorListeners'][number]['onChange']) {
+    if (!isValidFormName(path) || !listener) return;
     this.errorListeners.push({
       onChange: listener,
       path: path
@@ -366,23 +350,23 @@ export class SimpleForm<T = unknown> {
     };
   }
   // 卸载
-  public unsubscribeError(path?: string) {
+  public unsubscribeError(path?: FormPathType) {
     if (path === undefined) {
       this.errorListeners = [];
-    } else if (typeof path === 'string') {
-      this.errorListeners = this.errorListeners.filter((sub) => sub.path !== path);
+    } else {
+      this.errorListeners = this.errorListeners.filter((sub) => !isEqualName(sub.path, path));
     }
   }
   // 同步错误的变化
-  private notifyError(path?: string) {
-    if (path) {
+  private notifyError(path?: FormPathType) {
+    if (path === undefined) {
+      this.errorListeners.forEach((listener) => listener.onChange(this.getFieldError(listener.path)));
+    } else {
       this.errorListeners.forEach((listener) => {
-        if (listener?.path === path) {
+        if (JSON.stringify(listener?.path) === JSON.stringify(path)) {
           listener?.onChange && listener?.onChange(this.getFieldError(path));
         }
       });
-    } else {
-      this.errorListeners.forEach((listener) => listener.onChange(this.getFieldError(listener.path)));
     }
   }
 }

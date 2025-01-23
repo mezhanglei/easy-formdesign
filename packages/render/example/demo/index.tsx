@@ -20,7 +20,7 @@ export default function Demo(props) {
     'name2': (newValue, oldValue) => {
       console.log(newValue, oldValue);
     },
-    'name3[0]': (newValue, oldValue) => {
+    'list[0]': (newValue, oldValue) => {
       console.log(newValue, oldValue);
     },
     'name4': (newValue, oldValue) => {

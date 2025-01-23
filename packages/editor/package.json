@@ -47,7 +47,8 @@
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.1",
     "@codemirror/lang-json": "^6.0.1",
-    "@simpleform/render": "^4.1.27",
+    "@simpleform/render": "^4.1.31",
+    "@simpleform/rule": "^0.0.1",
     "@szhsin/react-menu": "^4.1.0",
     "@types/file-saver": "^2.0.7",
     "@types/js-beautify": "^1.14.3",
@@ -60,6 +61,7 @@
     "dayjs": "^1.11.10",
     "file-saver": "^2.0.5",
     "js-beautify": "^1.14.11",
+    "nanoid": "^5.0.7",
     "react-collapsed": "^4.1.2",
     "react-color": "^2.19.3",
     "react-fast-compare": "^3.2.2",

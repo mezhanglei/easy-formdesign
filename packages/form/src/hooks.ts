@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SimpleForm } from './store';
-import { FormPathType } from './utils/utils';
+import { deepSet, FormPathType, isIndexCode, pathToArr } from './utils/utils';
 
 export function useSimpleForm<T>(
   values?: T
@@ -10,8 +10,8 @@ export function useSimpleForm<T>(
 }
 
 // 获取error信息
-export function useFormError(form?: SimpleForm, path?: string) {
-  const [error, setError] = useState<SimpleForm['formErrors'][string]>();
+export function useFormError(form?: SimpleForm, path?: FormPathType) {
+  const [error, setError] = useState<ReturnType<SimpleForm['getFieldError']>>();
 
   const subscribe = useCallback(() => {
     if (form?.subscribeError && path) {
@@ -37,21 +37,24 @@ export function useFormError(form?: SimpleForm, path?: string) {
 }
 
 // 获取表单值
-export function useFormValues<V>(form: SimpleForm<V>, path?: FormPathType) {
-  const [values, setValues] = useState<Partial<V>>();
-  const keys = path instanceof Array ? path : path !== undefined && [path];
+export function useFormValues<V>(form: SimpleForm<V>, path?: FormPathType | Array<FormPathType>) {
+  const [mapData, setMapData] = useState<Partial<V>>();
 
   const subscribe = useCallback(() => {
     if (!form?.subscribeFormValue) return;
-    if (keys) {
-      keys.forEach((key) => {
-        form?.subscribeFormValue(key as string, (newVal) => {
-          setValues((old) => old instanceof Array ? [...old, newVal] : ({ ...old, [key]: newVal }));
+    const paths = path instanceof Array ? path : path !== undefined && [path];
+    if (paths) {
+      const isArr = paths.some((k) => isIndexCode(pathToArr(k)?.[0])); // 表单值是否为列表
+      let result: unknown = isArr ? [] : {};
+      paths.forEach((key) => {
+        form?.subscribeFormValue(key, (newVal) => {
+          result = deepSet(result, key, newVal);
+          setMapData(result as Partial<V>);
         });
       });
     } else {
       form?.subscribeFormValue((newVal) => {
-        setValues(newVal as Partial<V>);
+        setMapData(newVal as Partial<V>);
       });
     }
   }, [form?.subscribeFormValue, JSON.stringify(path)]);
@@ -67,5 +70,5 @@ export function useFormValues<V>(form: SimpleForm<V>, path?: FormPathType) {
     };
   }, [subscribe]);
 
-  return values;
+  return mapData;
 }

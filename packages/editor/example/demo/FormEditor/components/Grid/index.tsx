@@ -12,7 +12,7 @@ import {
 } from '@simpleform/editor';
 import GridCol from './col';
 import { GridColConfig } from './config';
-import { CustomRow, joinFormPath } from '../../FormRender';
+import { CustomRow } from '../../FormRender';
 
 export type CustomRowProps = RowProps & CommonFormProps<unknown, { cols?: Array<EditorGenerateWidgetItem> }>;
 
@@ -26,7 +26,7 @@ const Grid = React.forwardRef<HTMLDivElement, CustomRowProps>((props, ref) => {
   const { _options } = rest || {};
   const { isEditor, cols, path, formrender } = _options || {};
   const commonOptions = getCommonOptions(_options);
-  const colsPath = joinFormPath(path, 'cols');
+  const colsPath = (path || []).concat('cols');
   const cls = classnames(className, {
     'edit-row': isEditor
   });
@@ -48,7 +48,7 @@ const Grid = React.forwardRef<HTMLDivElement, CustomRowProps>((props, ref) => {
       ...col,
       props: colProps,
       index: colIndex,
-      path: joinFormPath(colsPath, colIndex),
+      path: colsPath.concat(colIndex),
     };
     return <GridCol key={_colOptions?.path} {...colProps} column={col} colIndex={colIndex} _options={_colOptions} />;
   });

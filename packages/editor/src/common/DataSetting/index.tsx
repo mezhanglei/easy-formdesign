@@ -5,7 +5,6 @@ import LinkageSetting from "./Linkage";
 import RequestSetting from './request';
 import OptionList from './list';
 import { CommonFormProps } from "../../typings";
-import { joinFormPath } from "@simpleform/render";
 import { EditorCodeMirror } from '../CodeMirror';
 import {
   getWidgetItem,
@@ -47,13 +46,14 @@ const DataSetting: React.FC<DataSettingProps> = (props) => {
 
   const editorContext = _options?.editorContext;
   const { selected, editor } = editorContext?.state || {};
+  const optionPath = selected?.path?.concat('props', 'optionSelect');
   const buttons = useMemo(() => (Options?.filter((item) => includes?.includes(item?.value))), [includes]);
-  const currentValue = getWidgetItem<string>(editor, joinFormPath(selected?.path, 'props.optionSelect')) || buttons[0]?.value;
+  const currentValue = getWidgetItem<string>(editor, optionPath) || buttons[0]?.value;
 
   const selectTypeChange = (key?: string) => {
     if (key) {
       onChange?.();
-      setWidgetItem(editor, key, joinFormPath(selected?.path, 'props.optionSelect'));
+      setWidgetItem(editor, key, optionPath);
     }
   };
 

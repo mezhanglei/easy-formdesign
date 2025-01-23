@@ -15,8 +15,10 @@
   "author": "",
   "license": "ISC",
   "workspaces": [
+    "packages/interpreter",
     "packages/form",
     "packages/render",
+    "packages/rule",
     "packages/editor"
   ],
   "devDependencies": {

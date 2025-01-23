@@ -1,6 +1,6 @@
 import React, { useContext, useRef, useState } from 'react';
 import { EditorWidgetItem, FormDesignData } from './typings';
-import {SimpleFormRender, SimpleForm, FormRenderProps} from '@simpleform/render';
+import {SimpleFormRender, SimpleForm, FormRenderProps, WidgetOptions} from '@simpleform/render';
 import { PlatType } from './tools/platContainer';
 import { SimpleUndo } from './utils/index';
 
@@ -14,13 +14,12 @@ export interface FormEditorState {
   editorForm?: SimpleForm;
   editor?: SimpleFormRender;
   settingForm?: SimpleForm | null;
-  selected?: { path?: string; setting?: ConfigWidgetSetting };
+  selected?: { path?: WidgetOptions['path']; setting?: ConfigWidgetSetting };
   widgetList?: FormDesignData;
   editorConfig: Record<string, EditorWidgetItem>; // 编辑器配置
   renderConfig?: FormRenderProps<any>; // 渲染器配置
   platType?: PlatType;
   historyRecord?: SimpleUndo;
-  onEvent?: (type: string, editorContext?: FormEditorContextProps) => void;
 }
 
 export function useMethod<T extends (...args: unknown[]) => unknown>(method: T) {

@@ -13,7 +13,7 @@ import {
   setWidgetItem
 } from "@simpleform/editor";
 import FormTableColSetting from './column-setting';
-import { FormRenderProps, joinFormPath, renderWidgetItem } from "../../../FormRender";
+import { FormRenderProps, renderWidgetItem } from "../../../FormRender";
 
 const EditorTable = React.forwardRef<HTMLDivElement, FormTableProps<unknown>>(({
   columns = [],
@@ -39,7 +39,7 @@ const EditorTable = React.forwardRef<HTMLDivElement, FormTableProps<unknown>>(({
 
   const { path, formrender, editorContext } = _options || {};
   const commonOptions = getCommonOptions(_options);
-  const columnsPath = joinFormPath(path, 'props.columns');
+  const columnsPath = (path || []).concat('props', 'columns');
   const { settingForm, editorConfig } = editorContext?.state || {};
 
   // 监听列控件设置值
@@ -47,8 +47,8 @@ const EditorTable = React.forwardRef<HTMLDivElement, FormTableProps<unknown>>(({
     settingForm && settingForm.setFieldValue('initialValue', value);
   };
 
-  const onSelectHandler: BaseSelectionProps['onSelectHandler'] = (nextSelected) => {
-    const selectedItem = getWidgetItem(formrender, nextSelected?.path);
+  const configGetter: BaseSelectionProps['getter'] = (path) => {
+    const selectedItem = getWidgetItem(formrender, path);
     const configSetting = editorConfig?.[selectedItem?.type || ''].setting;
     const baseSetting = configSetting?.['基础属性']?.filter((item) => item.name !== 'name');
     const mergeSetting = Object.assign(FormTableColSetting, {
@@ -56,10 +56,7 @@ const EditorTable = React.forwardRef<HTMLDivElement, FormTableProps<unknown>>(({
       '操作属性': configSetting?.['操作属性'],
       '校验规则': configSetting?.['校验规则']
     });
-    editorContext?.dispatch && editorContext?.dispatch((old) => ({
-      ...old,
-      selected: Object.assign({ setting: mergeSetting }, nextSelected)
-    }));
+    return { setting: mergeSetting, path };
   };
 
   const copyItem = (column, colIndex) => {
@@ -95,7 +92,7 @@ const EditorTable = React.forwardRef<HTMLDivElement, FormTableProps<unknown>>(({
             const _childOptions = {
               ...commonOptions,
               index: colIndex,
-              path: joinFormPath(columnsPath, colIndex),
+              path: columnsPath.concat(colIndex),
               onValuesChange: columnInputChange
             };
             const widget = { ...col, label: '' };
@@ -106,7 +103,7 @@ const EditorTable = React.forwardRef<HTMLDivElement, FormTableProps<unknown>>(({
                 className={Classes.TableSelection}
                 _options={_childOptions}
                 configLabel="表格列"
-                onSelectHandler={onSelectHandler}
+                getter={configGetter}
                 tools={[<SvgIcon key="fuzhi" name="fuzhi" onClick={() => copyItem(col, colIndex)} />]}
               >
                 <div className={Classes.TableCol}>

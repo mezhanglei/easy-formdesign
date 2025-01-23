@@ -16,45 +16,16 @@ export const FormItem = React.forwardRef<HTMLDivElement, FormItemProps>((props, 
   const { form, ...options } = useContext(SimpleFormContext);
   const mergeProps = Object.assign(options, props);
   const { children, ...fieldProps } = mergeProps;
-  const {
-    name,
-    index,
-    trigger,
-    validateTrigger,
-    valueProp,
-    valueGetter,
-    valueSetter,
-    errorClassName,
-    onFieldsChange,
-    onValuesChange,
-    initialValue,
-    rules,
-    component = Item,
-    ...rest
-  } = fieldProps;
+  const { component = Item, ...rest } = fieldProps;
 
-  const [error] = useFormError(form, name);
+  const [error] = useFormError(form, rest?.name);
   const nonform = rest?.nonform || rest?.readOnly;
-  const isHaveRequired = useMemo(() => (rules instanceof Array && rules?.find((rule) => rule?.required === true)), [rules]);
+  const isHaveRequired = useMemo(() => (rest?.rules instanceof Array && rest?.rules?.find((rule) => rule?.required === true)), [rest?.rules]);
   const required = isHaveRequired && nonform !== true ? true : rest?.required;
   const FieldComponent = component;
 
   const childs = (
-    <ItemCore
-      nonform={nonform}
-      name={name}
-      index={index}
-      trigger={trigger}
-      validateTrigger={validateTrigger}
-      valueProp={valueProp}
-      valueGetter={valueGetter}
-      valueSetter={valueSetter}
-      rules={rules}
-      initialValue={initialValue}
-      errorClassName={errorClassName}
-      onFieldsChange={onFieldsChange}
-      onValuesChange={onValuesChange}
-    >
+    <ItemCore nonform={nonform} {...rest}>
       {children}
     </ItemCore>
   );

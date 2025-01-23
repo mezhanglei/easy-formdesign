@@ -1,6 +1,6 @@
 import React, { CSSProperties, useEffect, useMemo } from 'react';
 import classnames from 'classnames';
-import { Form, FormChildren, FormRenderProps, joinFormPath, useSimpleForm } from '@simpleform/render';
+import { Form, FormChildren, FormRenderProps, pathToArr, useSimpleForm } from '@simpleform/render';
 import { getWidgetItem, setWidgetItem } from '../utils';
 import './component.less';
 import { Collapse } from '../common';
@@ -48,7 +48,7 @@ const SelectedSetting = React.forwardRef<HTMLDivElement, SelectedSettingProps>((
   }, [selectedPath]);
 
   const onFieldsChange: FormRenderProps['onFieldsChange'] = ({ name, value }) => {
-    const curPath = joinFormPath(selectedPath, name);
+    const curPath = (selectedPath || []).concat(pathToArr(name));
     setWidgetItem(editor, value, curPath);
     // 同步编辑区域初始值展示
     if (name === 'initialValue') {

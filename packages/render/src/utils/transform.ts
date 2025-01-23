@@ -1,6 +1,16 @@
-import { deepSet, Form, joinFormPath } from '@simpleform/form';
+import { deepSet, Form, isValidFormName } from '@simpleform/form';
 import React from 'react';
-import { CustomRenderType, CustomUnionType, FormRenderProps, GenerateWidgetItem, ReactComponent, RegisteredComponents, WidgetContextProps, WidgetItem, WidgetList } from "../typings";
+import {
+  CustomRenderType,
+  CustomUnionType,
+  FormRenderProps,
+  GenerateWidgetItem,
+  ReactComponent,
+  RegisteredComponents,
+  WidgetContextProps,
+  WidgetItem,
+  WidgetList,
+} from "../typings";
 import { cloneElement, createElement, isValidComponent, isValidElement } from "./framework";
 import { isEmpty, isObject } from './type';
 import serialize from 'serialize-javascript';
@@ -46,29 +56,6 @@ export const toExpression = (val?: unknown) => {
   return str ? '{{ ' + str + ' }}' : undefined;
 };
 
-// 从序列化字符串转化为js
-export const parseExpression = <V>(value: V, variables?: object) => {
-  if (typeof value === 'string') {
-    const matchStr = matchExpression(value);
-    if (matchStr) {
-      // 引入变量
-      const curVariables = { ...variables };
-      const variableKeys = Object.keys(curVariables); // 变量名
-      const variableValues = Object.values(curVariables); // 变量
-      const target = matchStr?.replace(/\{\{|\}\}/g, '');;
-      const codeStr = "return " + target;
-      // 函数最后一个参数为函数体，前面均为传入的变量名
-      const action = new Function(...variableKeys, codeStr);
-      const result = action(...variableValues);
-      return result;
-    } else {
-      return value;
-    }
-  } else {
-    return value;
-  }
-};
-
 // 递归遍历转换嵌套对象的子属性
 export const traverseMapObject = (val, callback) => {
   const isElement = isValidElement(val);
@@ -86,23 +73,25 @@ export const traverseMapObject = (val, callback) => {
 };
 
 // 递归遍历widgetList数据结构
-export const traverseWidgetList = <R>(
-  list?: WidgetList,
-  callback?: (item: WidgetItem, _options: { path: string, index?: number }, children?: R[]) => R,
-  parent?: string
+export const traverseList = <V>(
+  list?: Array<V>,
+  callback?: <R>(item: V, index: number, parent?: Array<string | number>) => R | void,
+  parent?: Array<string | number>
 ) => {
   if (!(list instanceof Array)) return;
   return list.map((item, index) => {
-    const curPath = joinFormPath(parent, index);
-    const children = traverseWidgetList(item?.children, callback, joinFormPath(curPath, 'children'));
-    return callback?.(item, { path: curPath, index }, children);
+    const children = (item as any)?.children;
+    const curPath = (parent || []).concat(index);
+    callback?.(item, index, curPath);
+    if (children instanceof Array) {
+      traverseList(children, callback, curPath.concat('children'));
+    }
   });
 };
 
 // 递归解析对象或数组中的每个属性
-export const evalAttr = <V>(val: V, variables?: object, parser?: FormRenderProps['parser']) => {
-  const isElement = isValidElement(val);
-  if (isElement || typeof parser !== 'function') return val;
+export const traverseParse = <V>(val: V, variables?: object, parser?: FormRenderProps['parser']) => {
+  if (typeof parser !== 'function') return val;
   return traverseMapObject(val, (target) => {
     const generateItem = parser(target, variables);
     return generateItem;
@@ -113,8 +102,8 @@ export const evalAttr = <V>(val: V, variables?: object, parser?: FormRenderProps
 export const getInitialValues = <V>(widgetList?: WidgetList) => {
   if (!(widgetList instanceof Array)) return;
   let initialValues = {} as V;
-  traverseWidgetList(widgetList, (item) => {
-    if (item?.initialValue !== undefined && item?.name) {
+  traverseList(widgetList, (item) => {
+    if (item?.initialValue !== undefined && isValidFormName(item?.name)) {
       initialValues = (deepSet(initialValues, item.name, item?.initialValue) || {}) as V;
     }
   });
@@ -165,7 +154,7 @@ export const createFormElement = (target?: CustomUnionType, props?: unknown, wid
 export const withSide = (target?: React.ReactNode, customRender?: CustomRenderType, side?: React.ReactNode, context?: WidgetContextProps) => {
   const childs = typeof customRender === 'function' ? customRender(target, context) : target;
   const childsWithSide = isValidElement(side) ? cloneElement(side, {}, childs) : childs;
-  const cloneChilds = isValidElement(childsWithSide) ? cloneElement(childsWithSide, { key: context?._options?.path }) : childsWithSide;
+  const cloneChilds = isValidElement(childsWithSide) ? cloneElement(childsWithSide, { key: context?._options?.path?.toString() }) : childsWithSide;
   return cloneChilds;
 };
 
@@ -187,12 +176,13 @@ export const renderWidgetItem = (
     return createElement(target as ReactComponent<unknown>, { _options: baseOptions } as React.Attributes);
   }
   const defineConfig = formrender?.config;
-  const generateWidgetItem = evalAttr(
+  const curForm = defineConfig?.form || baseOptions?.form;
+  const generateWidgetItem = traverseParse(
     target,
     {
-      form: defineConfig?.form,
+      form: curForm,
       formrender,
-      formvalues: defineConfig?.form?.getFieldValue() || {},
+      formvalues: curForm?.getFieldValue() || {},
       ...defineConfig?.variables,
     },
     defineConfig?.parser
@@ -214,14 +204,14 @@ export const renderWidgetItem = (
     _options: mergeItem
   };
   if (hidden === true) return;
-  const isFormWidget = mergeItem?.name ? true : false;
+  const isFormWidget = isValidFormName(mergeItem?.name) ? true : false;
   const insideEle = formrender.createFormElement(inside, childContext);
   const outsideEle = formrender.createFormElement(outside, childContext);
   const readOnlyEle = typeof readOnlyRender === 'function' ? readOnlyRender(childContext) : readOnlyRender;
   const typeRenderEle = typeof typeRender === 'function' ? typeRender(childContext) : typeRender;
   const typeWidget = formrender.createFormElement(mergeItem?.readOnly === true ? readOnlyEle : (typeRenderEle || { type, props }), childContext);
   const typeChildren = children instanceof Array
-    ? renderWidgetList(formrender, children, { ...baseOptions, path: joinFormPath(mergeItem?.path, 'children') })
+    ? renderWidgetList(formrender, children, { ...baseOptions, path: mergeItem?.path?.concat('children') })
     : formrender.createFormElement(children, childContext);
   const curNode = isValidElement(typeWidget) && !isEmpty(typeChildren)
     ? cloneElement(
@@ -257,7 +247,7 @@ export const renderWidgetList = (
 ) => {
   if (!formrender || !(widgetList instanceof Array)) return;
   return widgetList.map((item, index) => {
-    const curPath = joinFormPath(baseOptions?.path, index);
+    const curPath = (baseOptions?.path || []).concat(index);
     const childOptions = {
       ...baseOptions,
       index,

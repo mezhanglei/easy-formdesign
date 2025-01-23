@@ -6,23 +6,23 @@ export function getType<T>(obj: T) {
 }
 
 export function isBoolean<T>(data: T | boolean): data is boolean {
-  return getType(data) == '[object Boolean]';
+  return getType(data) === '[object Boolean]';
 }
 
 export function isNumber<T>(data: T | number): data is number {
-  return getType(data) == '[object Number]';
+  return getType(data) === '[object Number]';
 }
 
 export function isString<T>(data: T | string): data is string {
-  return getType(data) == '[object String]';
+  return getType(data) === '[object String]';
 }
 
 export function isFunction<T>(data: T | Function): data is Function {
-  return getType(data) == '[object Function]';
+  return getType(data) === '[object Function]';
 }
 
 export function isArray<T>(data: T | unknown[]): data is unknown[] {
-  return getType(data) == '[object Array]';
+  return getType(data) === '[object Array]';
 }
 
 export function isDate<T>(data: T | Date): data is Date {
@@ -30,19 +30,19 @@ export function isDate<T>(data: T | Date): data is Date {
 }
 
 export function isRegExp<T>(data: T | RegExp): data is RegExp {
-  return getType(data) == '[object RegExp]';
+  return getType(data) === '[object RegExp]';
 }
 
 export function isUndefined<T>(data: T | undefined): data is undefined {
-  return getType(data) == '[object Undefined]';
+  return getType(data) === '[object Undefined]';
 }
 
 export function isNull<T>(data: T | null): data is null {
-  return getType(data) == '[object Null]';
+  return getType(data) === '[object Null]';
 }
 
 export function isObject<T>(data: T | object): data is object {
-  return getType(data) == '[object Object]';
+  return getType(data) === '[object Object]';
 }
 
 export function isElement<T>(data: T | Element): data is Element {
@@ -58,7 +58,7 @@ export function isDom<T>(data: T & { nodeType?: number; nodeName?: string } | HT
 }
 
 export function isNodeList<T>(data: T | NodeList): data is NodeList {
-  return getType(data) == '[object NodeList]';
+  return getType(data) === '[object NodeList]';
 }
 
 // 判断值是否为空

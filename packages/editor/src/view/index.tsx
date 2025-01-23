@@ -1,12 +1,13 @@
 import React, { CSSProperties } from 'react';
 import classnames from 'classnames';
 import './index.less';
-import RootDnd from './RootDnd';
-import CommonSelection from './selection';
-import FormRender, { joinFormPath } from '@simpleform/render';
-import { setWidgetItem } from '../utils';
+import FormRender from '@simpleform/render';
+import { getWidgetItem, insertWidgetItem, setWidgetItem } from '../utils';
 import { FormEditorContextProps, useEditorContext } from '../context';
 import PlatContainer from '../tools/platContainer';
+import BaseDnd, { BaseDndProps } from './BaseDnd';
+import BaseSelection from './BaseSelection';
+import { SvgIcon } from '../common';
 
 export interface EditorViewProps {
   className?: string;
@@ -37,7 +38,7 @@ function EditorView(props: EditorViewProps) {
 
   // 监听编辑区域的初始表单值
   const onFieldsChange = (_) => {
-    setWidgetItem(editor, _?.value, joinFormPath(selected?.path, 'initialValue'));
+    setWidgetItem(editor, _?.value, (selected?.path || []).concat('initialValue'));
     settingForm && settingForm.setFieldValue('initialValue', _?.value);
   };
 
@@ -62,7 +63,7 @@ function EditorView(props: EditorViewProps) {
             widgetList={widgetList}
             onRenderChange={onRenderChange}
             onFieldsChange={onFieldsChange}
-            renderItem={renderItem}
+            renderItem={withSelection}
           />
         </PlatContainer>
       </main>
@@ -70,13 +71,45 @@ function EditorView(props: EditorViewProps) {
 };
 
 // 编辑区默认的选中框渲染
-const renderItem = (children, params) => {
+const withSelection = (children, params) => {
   const _options = params?._options || {};
   const nonselection = _options?.panel?.nonselection;
   if (nonselection) {
     return children;
   }
-  return <CommonSelection data-path={_options.path} {...params} children={children} />;
+
+  // 复制
+  const copyItem = () => {
+    const path = _options?.path;
+    const editor = _options?.formrender;
+    const editorContext = _options?.editorContext;
+    const { historyRecord } = editorContext?.state || {};
+    const currentIndex = _options?.index || -1;
+    const nextIndex = currentIndex + 1;
+    const newItem = getWidgetItem(editor, path);
+    insertWidgetItem(editor, newItem, nextIndex, path?.slice(0, path.length - 1));
+    historyRecord?.save();
+  };
+
+  return (
+    <BaseSelection
+      {...params}
+      configLabel={_options?.panel?.label}
+      tools={[<SvgIcon key="fuzhi" name="fuzhi" onClick={copyItem} />]}
+    >
+      {children}
+    </BaseSelection>
+  );
+};
+
+// 根节点的拖放区域
+const RootDnd: React.FC<BaseDndProps> = (props) => {
+  const editorContext = useEditorContext();
+  return <BaseDnd
+    {...props}
+    dndList={editorContext?.state?.widgetList || []}
+    _options={{ ...props._options, editorContext }}
+  />;
 };
 
 EditorView.displayName = 'editor-view';

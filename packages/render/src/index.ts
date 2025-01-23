@@ -4,7 +4,7 @@ export default FormRender;
 export { FormChildren };
 export * from './typings';
 export * from './components';
-export * from './store';
+export * from './store/index';
 export * from "./hooks";
 export * from "./utils/utils";
 export * from "./utils/transform";

@@ -22,7 +22,9 @@ export {
 export * from './view/BaseSelection';
 export * from './view/BaseDnd';
 
+
 export * from '@simpleform/render';
+export * from './containers';
 export * from './common';
 export * from './panel';
 export * from './view';

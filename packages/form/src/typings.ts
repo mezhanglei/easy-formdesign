@@ -21,3 +21,5 @@ export type PathValue<T, Path> = FilterPath<Path> extends undefined
   ? PathValue<T[PathHead<Path>], PathRest<Path>>
   : T[PathHead<Path>]
   : undefined;
+
+export type GetMapValueType<T extends Map<unknown, unknown>> = T extends Map<unknown, infer V> ? V : never;
